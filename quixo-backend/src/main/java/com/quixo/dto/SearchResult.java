@@ -1,8 +1,7 @@
-package com.quixo.model;
+package com.quixo.dto;
 
 public class SearchResult {
 
-    private String letter;
     private String title;
     private String url;
     private String snippet;
@@ -10,19 +9,10 @@ public class SearchResult {
     public SearchResult() {
     }
 
-    public SearchResult(String letter, String title, String url, String snippet) {
-        this.letter = letter;
+    public SearchResult(String title, String url, String snippet) {
         this.title = title;
         this.url = url;
         this.snippet = snippet;
-    }
-
-    public String getLetter() {
-        return letter;
-    }
-
-    public void setLetter(String letter) {
-        this.letter = letter;
     }
 
     public String getTitle() {
