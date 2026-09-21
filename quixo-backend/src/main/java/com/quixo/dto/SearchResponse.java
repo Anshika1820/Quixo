@@ -4,28 +4,23 @@ import java.util.List;
 
 public class SearchResponse {
 	private String query;
-	private int totalResults;
-	private List<SearchResult> result;
+	private String searchType;
+	private List<SearchResult> searchResult;
 	
-	public SearchResponse() {
-		
-	}
-
 	public String getQuery() {
 		return query;
 	}
-
-	public int getTotalResults() {
-		return totalResults;
+	public String getSearchType() {
+		return searchType;
 	}
-
-	public List<SearchResult> getResult() {
-		return result;
+	public List<SearchResult> getSearchResult() {
+		return searchResult;
 	}
-
-	public SearchResponse(String query, int totalResults, List<SearchResult> result) {
+	
+	public SearchResponse(String query, String searchType, List<SearchResult> searchResult) {
+		super();
 		this.query = query;
-		this.totalResults = totalResults;
-		this.result = result;
-	}	
+		this.searchType = searchType;
+		this.searchResult = searchResult;
+	}
 }

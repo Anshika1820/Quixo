@@ -19,7 +19,14 @@ public class SearchController {
 	}
 	
 	@GetMapping("/health")
-		public String healthCHeck() {
-			return "Quixo Search API is working";
-		}
+	public String healthCheck() {
+		return "Quixo Search API is working";
+	}
+	
+	@GetMapping
+	public SearchResponse search(@RequestParam String q){
+		List<SearchResult> results=searchService.search(q);
+		return new SearchResponse(q,"web",results);
+	}
+	
 }
