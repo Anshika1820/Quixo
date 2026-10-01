@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 import com.quixo.config.SerpApiConfig;
+import com.quixo.exception.SearchServiceException;
 
 @Service
 public class SerpApiService {
@@ -18,7 +19,12 @@ public class SerpApiService {
 	}
 	
 	public Map<String, Object> searchGoogle(String query){
-		return restClient.get().uri(uriBuilder -> uriBuilder.path("/search").queryParam("engine", "google")
-				.queryParam("q", query).queryParam("api_key", serpApiConfig.getApiKey()).build()).retrieve().body(Map.class);
+		try{
+			return restClient.get().uri(uriBuilder -> uriBuilder.path("/search").queryParam("engine", "google")
+					.queryParam("q", query).queryParam("api_key", serpApiConfig.getApiKey()).build()).retrieve().body(Map.class);
+		}
+		catch(Exception e) {
+			throw new SearchServiceException("Unable to complete the search right now", e);
+		}
 	}
 }  
