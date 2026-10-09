@@ -1,0 +1,121 @@
+# QUIXO — Local Setup Guide
+
+This guide explains how to set up the QUIXO frontend and backend on a local development machine.
+
+## 1. Prerequisites
+
+Install the following:
+
+* Git
+* Node.js and npm
+* Java Development Kit (JDK) 21
+* A SerpApi account and API key
+
+Use the MongoDB installation only if the current backend configuration requires it.
+
+## 2. Clone the Repository
+
+Open a terminal and run:
+
+```bash
+git clone YOUR_PUBLIC_GITHUB_REPOSITORY_URL
+cd YOUR_REPOSITORY_FOLDER
+```
+
+Replace the placeholders with your actual GitHub repository URL and folder name.
+
+## 3. Configure the Backend
+
+Open a terminal in the Spring Boot backend directory.
+
+### Configure SerpApi
+
+Obtain an API key from [SerpApi](https://serpapi.com/).
+
+Configure the key using the environment variable or Spring Boot property expected by the backend code.
+
+**Security reminder:** Never publish your real API key in GitHub, frontend code, screenshots, or demonstration videos.
+
+### Start the backend
+
+If the backend contains the Maven wrapper, run this on Windows:
+
+```powershell
+.\mvnw.cmd spring-boot:run
+```
+
+On macOS or Linux:
+
+```bash
+./mvnw spring-boot:run
+```
+
+If the Maven wrapper is unavailable, use the Maven installation and commands supported by the project.
+
+Wait until Spring Boot reports that the application has started successfully. Check the configured server port in the backend configuration or startup logs.
+
+## 4. Configure the Frontend
+
+Open another terminal in the frontend directory.
+
+Install the dependencies:
+
+```bash
+npm install
+```
+
+Start the development server:
+
+```bash
+npm run dev
+```
+
+Open the local URL printed in the terminal by Vite.
+
+## 5. Verify the Integration
+
+1. Confirm that the frontend opens in your browser.
+2. Confirm that the Spring Boot backend is running.
+3. Enter a non-empty search query in QUIXO.
+4. Verify that the frontend request reaches the backend.
+5. Confirm that the backend can communicate with SerpApi.
+6. Check that the search results appear in the interface.
+7. Test an empty query and confirm that it is handled appropriately.
+
+The frontend API base URL, backend port, endpoint path, and SerpApi configuration must match the current project configuration.
+
+## 6. Troubleshooting
+
+### Frontend cannot connect to the backend
+
+* Check that Spring Boot is running.
+* Confirm the backend port and API URL.
+* Check the browser console and backend logs.
+* Verify CORS configuration if the frontend and backend use different origins.
+
+### Search requests fail
+
+* Confirm that the SerpApi key is configured correctly.
+* Check the backend logs for network or upstream service errors.
+* Verify that the request contains a valid, non-empty query.
+* Check the SerpApi account and API usage limits.
+
+### Port already in use
+
+Another application may be using the configured port. Stop the conflicting process or configure the backend to use an available port, then ensure the frontend points to the correct backend URL.
+
+### Dependencies or builds fail
+
+* Confirm that the required Java and Node.js versions are installed.
+* Run `npm install` in the frontend directory.
+* Review the Maven output for backend dependency or compilation errors.
+
+## 7. Development Notes
+
+QUIXO is under active development. Commands, configuration properties, and directory names should be updated whenever the project structure changes.
+
+For system design, request flow, and API details, see:
+
+* [Architecture](ARCHITECTURE.md)
+* [API Documentation](API.md)
+* [Project README](../README.md)
