@@ -1,0 +1,114 @@
+ QUIXO — API Documentation
+
+## 1. Overview
+
+QUIXO uses a Java Spring Boot backend to handle search requests from the frontend. The backend communicates with SerpApi and returns search results in JSON format.
+
+## 2. Base URL
+
+For local development, the base URL depends on the port configured for the Spring Boot application.
+http://localhost:<backend-port>/api/v1
+
+
+Replace `<backend-port>` with the actual port configured in your backend.
+
+## 3. Search Endpoint
+
+### Search the Web
+
+* **Method:** `GET`
+* **Endpoint:** `/api/v1/search`
+* **Query parameter:** `q`
+* **Purpose:** Submit a search query and receive search results.
+
+#### Example request
+
+
+GET /api/v1/search?q=Java%20Spring%20Boot
+
+
+For local testing, replace the host and port with your running backend address.
+
+#### Query parameters
+
+| Parameter | Type   | Required | Description                          |
+| --------- | ------ | -------- | ------------------------------------ |
+| `q`       | String | Yes      | The search query entered by the user |
+
+#### Example successful response
+
+```json
+{
+  "query": "Java Spring Boot",
+  "totalResults": 3,
+  "results": [
+    {
+      "title": "Example result title",
+      "url": "https://example.com/article",
+      "snippet": "A short description of the result."
+    },
+    {
+      "title": "Another example result",
+      "url": "https://example.org/guide",
+      "snippet": "A brief summary of the linked page."
+    },
+    {
+      "title": "Additional resource",
+      "url": "https://example.net/resource",
+      "snippet": "Additional information related to the query."
+    }
+  ]
+}
+```
+
+*The response above illustrates the documented response structure. The titles, links, snippets, and count are examples, not live search results.*
+
+## 4. Response Fields
+
+### Search response
+
+| Field          | Type    | Description                                    |
+| -------------- | ------- | ---------------------------------------------- |
+| `query`        | String  | The query submitted by the user                |
+| `totalResults` | Integer | The number of results reported in the response |
+| `results`      | Array   | The returned search-result objects             |
+
+### Search result
+
+| Field     | Type   | Description                     |
+| --------- | ------ | ------------------------------- |
+| `title`   | String | Title of the search result      |
+| `url`     | String | Link to the result              |
+| `snippet` | String | Short description of the result |
+
+## 5. Error Handling
+
+The backend validates search input. An empty search query is considered invalid and should be rejected.
+
+Search requests can also fail because of invalid API credentials, network problems, upstream service errors, or unexpected responses.
+
+Clients should handle failed requests gracefully and show an appropriate message to the user.
+
+The exact HTTP status codes and error-response JSON depend on the backend's current exception-handling implementation.
+
+## 6. SerpApi Integration
+
+The backend uses SerpApi to retrieve search data.
+
+The API key should be configured on the server side and must not be included in frontend requests, public documentation, or committed source files.
+
+## 7. Testing the Endpoint
+
+1. Start the Spring Boot backend.
+2. Send a request to `/api/v1/search` with a non-empty `q` parameter.
+3. Confirm that the backend returns a JSON response.
+4. Verify that the response contains `query`, `totalResults`, and `results`.
+5. Try an empty query and confirm that the application handles it appropriately.
+
+Example URL for local testing:
+
+http://localhost:<backend-port>/api/v1/search?q=Java
+
+---
+
+*Keep this document synchronized with the actual controller, response classes, and error-handling implementation as the API evolves.*
