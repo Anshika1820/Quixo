@@ -1,0 +1,44 @@
+# Secrets and local environment files
+
+.env
+.env.*
+!.env.example
+application-local.properties
+application-local.yml
+application-local.yaml
+
+# Frontend dependencies and build output
+
+node_modules/
+dist/
+.vite/
+
+# Java / Maven build output
+
+target/
+*.class
+
+# Logs and temporary files
+
+*.log
+logs/
+tmp/
+temp/
+
+# Operating system files
+
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE settings
+
+.idea/
+.settings/
+.classpath
+.project
+.factorypath
+
+# Local IDE metadata
+
+.vscode/
