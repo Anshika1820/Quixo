@@ -1,7 +1,7 @@
 
 import { Link, useRouterState } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { ArrowUpRight, Sparkles } from "lucide-react";
+import { ArrowUpRight, Bookmark, Sparkles } from "lucide-react";
 import logo from "@/assets/logo.png";
 
 const animation = {
@@ -15,6 +15,18 @@ export function Nav() {
   });
 
   const isHome = pathname === "/";
+
+  const scrollToSection = (sectionId) => {
+    if (isHome) {
+      document.getElementById(sectionId)?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      return;
+    }
+
+    window.location.href = `/#${sectionId}`;
+  };
 
   return (
     <motion.header
@@ -42,37 +54,76 @@ export function Nav() {
 
         {/* Desktop navigation */}
         <div className="hidden items-center gap-8 sm:flex">
-          <Link
-            to="/search"
-            search={{ q: "how do neural search engines work", mode: "EXPLORE" }}
-            className={`group inline-flex items-center gap-1.5 text-sm transition-colors duration-200 ${
-              pathname === "/search"
-                ? "text-violet-300"
-                : "text-[#a197b0] hover:text-white"
-            }`}
-          >
-            Discover
-            <ArrowUpRight
-              size={13}
-              className="opacity-0 transition-opacity group-hover:opacity-100"
-            />
-          </Link>
+            <Link
+              to="/search"
+              search={{
+                q: "how do neural search engines work",
+                mode: "EXPLORE",
+              }}
+              className={`group inline-flex items-center gap-1.5 text-md transition-colors duration-200 ${
+                pathname === "/search"
+                  ? "text-violet-300"
+                  : "text-[#a197b0] hover:text-white"
+              }`}
+            >
+              Discover
+              <ArrowUpRight
+                size={13}
+                className="opacity-0 transition-opacity group-hover:opacity-100"
+              />
+            </Link>
+
+            {/* <Link
+              to="/preferred-lists"
+              className={`inline-flex items-center gap-2 text-sm transition-colors duration-200 ${
+                pathname === "/preferred-lists"
+                  ? "text-violet-300"
+                  : "text-[#a197b0] hover:text-white"
+              }`}
+            >
+              <Bookmark size={15} />
+              Preferred Lists
+            </Link> */}
+
+
 
           {isHome && (
             <>
-              <a
-                href="#trending"
-                className="text-sm text-[#a197b0] transition-colors duration-200 hover:text-white"
+              <button
+                type="button"
+                onClick={() => scrollToSection("discover")}
+                className="text-sm text-[#a197b0] transition-color  duration-200 hover:text-white"
               >
                 Trending
-              </a>
+              </button>
 
-              <a
-                href="#recent"
+              <button
+                type="button"
+                onClick={() => scrollToSection("recent")}
                 className="text-sm text-[#a197b0] transition-colors duration-200 hover:text-white"
               >
                 History
-              </a>
+              </button>
+            </>
+          )}
+
+          {!isHome && (
+            <>
+              <button
+                type="button"
+                onClick={() => scrollToSection("discover")}
+                className="text-sm text-[#a197b0] transition-colors duration-200 hover:text-white"
+              >
+                Trending
+              </button>
+
+              <button
+                type="button"
+                onClick={() => scrollToSection("recent")}
+                className="text-sm text-[#a197b0] transition-colors duration-200 hover:text-white"
+              >
+                History
+              </button>
             </>
           )}
         </div>
@@ -97,4 +148,3 @@ export function Nav() {
     </motion.header>
   );
 }
-

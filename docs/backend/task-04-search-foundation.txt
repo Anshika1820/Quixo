@@ -1,0 +1,283 @@
+# Quixo — Task 4: Search Foundation
+
+## 1. Task Overview
+
+**Project:** Quixo — AI-powered Personal Search & Decision Intelligence System
+**Task:** Task 4 — Search Foundation
+**Scope:** Tasks 4A–4I
+**Backend:** Java 21, Spring Boot, Maven, SerpApi
+**Frontend:** React, Vite, JavaScript, Tailwind CSS
+**Database:** MongoDB
+**Status:** Task 4 scope closed; implementation status of individual components must be confirmed against the current repository.
+
+## 2. STAR Documentation
+
+### S — Situation
+
+Quixo needed a search foundation that could support different user search intentions rather than treating every query as an identical web search.
+
+The application needed to accept search queries, select the appropriate search mode, communicate with SerpApi, normalize provider results into a consistent application-level structure, and return useful metadata to the frontend.
+
+It also needed predictable validation and error handling so that invalid input and external search-provider failures could be handled without exposing raw internal exceptions to the user.
+
+### T — Task
+
+The objective of Task 4 was to establish and strengthen the search foundation by working on:
+
+* A structured search-processing architecture.
+* Search modes: EXPLORE, LEARN, CAREER and RESEARCH.
+* SerpApi integration for web, job and news searches.
+* Search-mode labels and descriptions.
+* Search execution metadata.
+* Query validation and centralized exception handling.
+* Search-result normalization and quality improvements.
+* Source classification and Search Journey foundations, where implemented.
+
+### A — Action
+
+#### 4A. Search architecture
+
+Quixo uses a layered backend architecture to separate HTTP request handling, business logic, provider communication and result transformation.
+
+The intended request flow is:
+
+`SearchController → SearchService → SearchOrchestrator → SerpApiService → SearchResultNormalizer → SearchResponse`
+
+Responsibilities:
+
+* **SearchController:** Accepts search requests and exposes the API endpoint.
+* **SearchService:** Coordinates the application-level search operation.
+* **SearchOrchestrator:** Selects the search behavior according to the requested mode.
+* **SerpApiService:** Communicates with the external SerpApi service.
+* **SearchResultNormalizer:** Converts provider-specific result data into Quixo's result structure.
+* **SearchResponse:** Provides a consistent response to the frontend.
+
+The current source code should be checked to confirm that these responsibilities and method signatures remain consistent.
+
+#### 4B. Search modes
+
+Quixo defines four search modes:
+
+| Mode     | Intended purpose                   | Search behavior   |
+| -------- | ---------------------------------- | ----------------- |
+| EXPLORE  | General web discovery              | Google web search |
+| LEARN    | Learning and educational discovery | Google web search |
+| CAREER   | Job and career discovery           | Google Jobs       |
+| RESEARCH | News and research discovery        | Google News       |
+
+The intended routing in `SearchOrchestrator` uses `searchJobs()` for CAREER, `searchNews()` for RESEARCH, and `searchGoogle()` for EXPLORE and LEARN.
+
+The current implementation does not, by itself, establish that LEARN or RESEARCH uses a fully specialized ranking algorithm. Such behavior should only be documented once implemented and tested.
+
+#### 4C. SerpApi integration
+
+The backend integrates with SerpApi to retrieve external search results.
+
+The integration uses Spring's `RestClient` with SerpApi as the base URL. The search service contains operations for web, job and news searches, with configuration managed through `SerpApiConfig`.
+
+The integration is intended to keep external-provider communication separate from controller logic and result presentation.
+
+The API key should be stored in configuration or environment variables and must not be committed to GitHub.
+
+#### 4D. Search-mode metadata
+
+Quixo's response includes mode-related information such as:
+
+* `searchType`
+* `modeLabel`
+* `description`
+
+This allows the frontend to identify the selected search mode and display a corresponding label or explanation.
+
+The existing `SearchModeMetadata` and `SearchModeMetadataService` should be reused rather than duplicated.
+
+#### 4E. Search execution metadata
+
+The response structure includes `searchExecutionMetadata`, with fields such as:
+
+* `engine` — the search engine used for the request.
+* `executedAt` — the recorded execution timestamp.
+* `resultCount` — the number of results returned.
+
+This metadata gives the frontend useful context about the search operation and creates a foundation for future search analytics.
+
+#### 4F. Validation and exception handling
+
+The backend includes exception-related classes in `com.quixo.exception`, including:
+
+* `ErrorResponse`
+* `GlobalExceptionHandler`
+* `InvalidSearchQueryException`
+* `SearchServiceException`
+
+The global exception handler provides a consistent error-response structure for supported failures.
+
+Previously verified examples included:
+
+* An empty query with `mode=LEARN` returning `INVALID_SEARCH_QUERY`.
+* An invalid mode such as `mode=ABC` returning `INVALID_REQUEST_PARAMETER`.
+* A request without an explicit mode defaulting to EXPLORE.
+
+These outcomes should be rechecked if the controller or exception-handling implementation has changed.
+
+#### 4G. Search-result normalization
+
+The normalization layer converts different SerpApi response formats into Quixo's `SearchResult` structure.
+
+The result model has included fields such as:
+
+* `title`
+* `link`
+* `snippet`
+* `source`
+* `sourceType`
+* `image`
+* `date`
+* `position`
+
+The normalization work has also included cleaning HTML markup from result text and validating essential fields such as title and link.
+
+Potential provider-specific issues must be checked in the current code, including the Google News response key and the mapping of job-result date information. Duplicate removal and other quality improvements should only be recorded as completed if their implementations exist and have been tested.
+
+#### 4H. Source Intelligence
+
+The proposed Source Intelligence layer classifies search results into useful categories, such as documentation, GitHub repositories, videos, academic sources, career listings, communities and general web results.
+
+A `SourceClassifier` was discussed as a possible implementation.
+
+**Completion status:** The presence and actual use of this class have not been confirmed. This section describes the intended capability, not a verified completed feature.
+
+#### 4I. Search Journey foundation
+
+Search Journeys are intended to let users organize related searches around a continuing goal rather than treating every search as an isolated event.
+
+The proposed foundation includes a MongoDB-backed `SearchJourney` model and repository.
+
+However, the existence of the model or repository alone would not demonstrate that the feature is complete. A working implementation also needs persistence, backend endpoints, frontend interaction and verification of the full user flow.
+
+**Completion status:** Confirm the current repository before claiming that Search Journey persistence or the end-to-end feature is complete.
+
+### R — Result
+
+Task 4 established the agreed search-foundation scope and a basis for continuing Quixo's development.
+
+The project has demonstrated a structured search response containing query information, search mode metadata, execution metadata and normalized search results. Query validation and structured error responses have also been tested in earlier development.
+
+The foundation supports continued work on specialized search behavior and persistent search journeys.
+
+The following claims require a fresh repository check before being included as completed achievements:
+
+* Complete Source Intelligence classification.
+* Fully implemented MongoDB Search Journey persistence.
+* Complete frontend-to-backend Search Journey integration.
+* Comprehensive duplicate removal and source-specific result ranking.
+
+No performance improvement, accuracy percentage or other quantitative achievement should be claimed without measured evidence.
+
+## 3. Technical Architecture
+
+```text
+React + Vite Frontend
+        |
+        | Search request
+        v
+SearchController
+        |
+        v
+SearchService
+        |
+        v
+SearchOrchestrator
+        |
+        v
+SerpApiService
+        |
+        v
+SerpApi
+        |
+        v
+SearchResultNormalizer
+        |
+        v
+SearchResponse
+        |
+        v
+React Search Results UI
+```
+
+This diagram represents the intended search flow. Confirm the actual method calls and return types in the current source code before treating it as an exact implementation diagram.
+
+## 4. Example API Contract
+
+An example search request:
+
+`GET /api/search?q=java&mode=EXPLORE`
+
+An example response shape based on a previously observed response:
+
+```json
+{
+  "query": "java",
+  "searchType": "EXPLORE",
+  "modeLabel": "Explore",
+  "description": "Discover general information from the web.",
+  "searchExecutionMetadata": {
+    "engine": "google",
+    "executedAt": "2026-10-07T17:19:19.6527488",
+    "resultCount": 9
+  },
+  "searchResult": []
+}
+```
+
+The empty array above is illustrative; it does not mean the original request returned zero results. Actual result objects depend on the provider response. The field names and exact JSON structure should be verified against the current DTOs.
+
+## 5. Testing and Verification
+
+Earlier development checks covered the following cases:
+
+| Test case                    | Previously observed outcome                                        |
+| ---------------------------- | ------------------------------------------------------------------ |
+| Valid EXPLORE query          | Search results returned                                            |
+| Empty query                  | Structured invalid-query error                                     |
+| Invalid mode                 | Structured invalid-parameter error                                 |
+| Missing mode                 | EXPLORE used as the default                                        |
+| External provider failure    | Search-service error handled                                       |
+| HTML in result titles        | Text-cleaning logic added; current behavior should be rechecked    |
+| CAREER and RESEARCH searches | Provider-dependent behavior; verify successful non-empty responses |
+
+These are development observations, not a claim that a complete automated regression suite exists.
+
+## 6. Challenges and Engineering Considerations
+
+* External provider responses can differ across web, job and news searches.
+* A valid HTTP response from SerpApi does not guarantee that the expected result array exists.
+* Result normalization needs to tolerate missing fields and unexpected data types.
+* Invalid user input and provider failures need distinguishable error responses.
+* Search modes should have clearly defined behavior rather than being labels without meaningful differences.
+* MongoDB models and repositories do not automatically provide a complete user-facing feature.
+
+## 7. Known Limitations and Next Steps
+
+Before extending the search foundation, inspect the current code to determine whether the following exist and work:
+
+1. Source classification and its integration with result normalization.
+2. Search Journey model and repository.
+3. Journey creation, persistence and retrieval endpoints.
+4. Frontend controls for creating, opening and continuing a journey.
+5. Correct handling of provider response keys for all supported modes.
+6. Tests covering successful and unsuccessful requests.
+
+The next development phase should implement the missing pieces without duplicating existing code.
+
+## 8. Interview-Ready STAR Summary
+
+**Situation:** Quixo needed a structured search foundation that could handle different search intentions and standardize results from an external search provider.
+
+**Task:** I worked on organizing the search flow, supporting multiple search modes, integrating SerpApi, adding response metadata, and handling invalid requests and provider errors.
+
+**Action:** The backend separates request handling, orchestration, provider communication and result normalization. Search modes select the appropriate provider operation, while the response structure carries search metadata and normalized results. Centralized exception handling provides consistent errors for invalid requests and service failures.
+
+**Result:** The foundation supports web, job and news search workflows and provides a consistent response contract for the React frontend. The next phase is to build and verify persistent Search Journeys and any remaining source-classification functionality.
+
+**Documentation rule:** Update this document after checking the current source code and record only the behavior that is actually implemented and verified.

@@ -371,7 +371,7 @@ function HomePage() {
           {/* TRENDING */}
           <section
             id="discover"
-            className="mx-auto max-w-[1380px] px-5 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24"
+            className="scroll-mt-24 mx-auto max-w-[1380px] px-5 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24"
           >
             <SectionHeading
               number="01"
@@ -465,7 +465,7 @@ function HomePage() {
           </section>
 
           {/* RECENT SEARCHES */}
-          <section className="border-y border-white/[0.065] bg-[#09070b]">
+          <section  id="recent" className="scroll-mt-24 border-y border-white/[0.065] bg-[#09070b]">
             <div className="mx-auto grid max-w-[1380px] gap-10 px-5 py-16 sm:px-8 sm:py-20 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20 lg:px-12 lg:py-24">
               <div>
                 <Eyebrow>02 / PICK UP WHERE YOU LEFT OFF</Eyebrow>

@@ -366,6 +366,7 @@ function SearchPage() {
             )}
           </motion.section>
 
+          
           {showJourney && (
             <motion.section
               initial={{ opacity: 0, y: 8 }}
@@ -374,12 +375,14 @@ function SearchPage() {
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <h2 className="text-lg font-semibold">
-                    Investigation thread
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={17} className="text-violet-300" />
+                    <h2 className="text-lg font-semibold">
+                      Search Journey
+                    </h2>
+                  </div>
                   <p className="mt-1 text-sm text-zinc-400">
-                    Use this query as the starting point for your next
-                    exploration.
+                    Continue exploring this topic from a different perspective.
                   </p>
                 </div>
 
@@ -394,17 +397,57 @@ function SearchPage() {
                 </button>
               </div>
 
-              <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.05] px-3 py-2 text-sm text-violet-200">
-                <SearchIcon size={14} />
-                <span className="break-all">{query}</span>
+              <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-400/[0.05] p-3">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">
+                  Current search
+                </p>
+                <p className="mt-2 break-words text-sm font-medium text-zinc-100">
+                  {query}
+                </p>
+                <p className="mt-1 text-xs text-zinc-500">
+                  {activeMode.label} · Your starting point
+                </p>
               </div>
 
-              <p className="mt-3 text-xs leading-5 text-zinc-500">
-                Related searches and saved search history are not connected
-                yet. This panel currently shows your active investigation.
+              <p className="mt-4 text-sm font-medium text-zinc-200">
+                Continue with another mode
               </p>
+
+              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                {modes
+                  .filter((item) => item.id !== mode)
+                  .map(({ id, label, description, icon: Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => changeMode(id)}
+                      title={description}
+                      className="group flex min-w-0 items-center gap-3 rounded-xl border border-white/[0.07] bg-white/[0.015] p-3 text-left transition hover:border-violet-400/30 hover:bg-violet-400/[0.05]"
+                    >
+                      <span className="grid size-9 shrink-0 place-items-center rounded-lg border border-violet-400/15 bg-violet-400/[0.06] text-violet-300">
+                        <Icon size={16} />
+                      </span>
+
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-sm font-medium text-zinc-200 group-hover:text-violet-200">
+                          {label}
+                        </span>
+                        <span className="mt-1 block text-xs leading-5 text-zinc-500">
+                          {description}
+                        </span>
+                      </span>
+
+                      <ArrowUpRight
+                        size={15}
+                        className="shrink-0 text-zinc-600 transition group-hover:text-violet-300"
+                      />
+                    </button>
+                  ))}
+              </div>
             </motion.section>
           )}
+
+
 
           <section>
             <div className="mb-4 flex items-center justify-between gap-3">
