@@ -1,143 +1,743 @@
-import { search } from "@/api/searchApi";
-import { useEffect, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useRef, useState } from "react";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { motion } from "motion/react";
-import { Sparkles, TrendingUp, HelpCircle, ArrowUpRight, Copy, Share2 } from "lucide-react";
-import { Logo } from "@/components/quixo/Logo";
+import {
+  ArrowLeft,
+  ArrowUpRight,
+  BriefcaseBusiness,
+  BookOpen,
+  Check,
+  Clock3,
+  Copy,
+  ExternalLink,
+  Globe2,
+  GraduationCap,
+  Newspaper,
+  Search as SearchIcon,
+  Share2,
+  Sparkles,
+  X,
+} from "lucide-react";
+
+import { search } from "@/api/searchApi";
+import quixoLogo from "../assets/logo.png";
 import { SearchBar } from "@/components/quixo/SearchBar";
 import { Footer } from "@/components/quixo/Footer";
-import { categories, sources, webResults, imageResults, relatedQuestions, trending } from "@/components/quixo/data";
 
-const pageTitle = "Quixo Search Results — grounded answers with sources";
-const pageDescription = "See the Quixo results experience: an AI answer card with cited sources, web results, image results, and related questions.";
+const modes = [
+  {
+    id: "EXPLORE",
+    label: "Explore",
+    icon: Globe2,
+    description: "Discover the wider web.",
+    resultsLabel: "Web results",
+  },
+  {
+    id: "LEARN",
+    label: "Learn",
+    icon: GraduationCap,
+    description: "Find explanations and learning resources.",
+    resultsLabel: "Learning resources",
+  },
+  {
+    id: "CAREER",
+    label: "Career",
+    icon: BriefcaseBusiness,
+    description: "Explore jobs and career opportunities.",
+    resultsLabel: "Career opportunities",
+  },
+  {
+    id: "RESEARCH",
+    label: "Research",
+    icon: BookOpen,
+    description: "Explore research and news sources.",
+    resultsLabel: "Research and news",
+  },
+];
+
 const ease = [0.22, 1, 0.36, 1];
 
 export const Route = createFileRoute("/search")({
-  validateSearch: (search) => ({ q: typeof search.q === "string" ? search.q : "how do AI answer engines work" }),
-  head: () => ({ meta: [{ title: pageTitle }, { name: "description", content: pageDescription }, { property: "og:title", content: pageTitle }, { property: "og:description", content: pageDescription }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary_large_image" }] }),
+  validateSearch: (searchParams) => ({
+    q: typeof searchParams.q === "string" ? searchParams.q : "",
+    mode: modes.some((item) => item.id === searchParams.mode)
+      ? searchParams.mode
+      : "EXPLORE",
+  }),
+  head: () => ({
+    meta: [
+      { title: "Search | QUIXO" },
+      {
+        name: "description",
+        content:
+          "Explore, learn, research, and discover information with QUIXO.",
+      },
+    ],
+  }),
   component: SearchPage,
 });
-
-function Favicon({ letter }) {
-  return <span className="grid size-7 shrink-0 place-items-center rounded-lg border border-border text-[11px] font-semibold" style={{ backgroundImage: "var(--gradient-crimson)" }}>{letter}</span>;
-}
 
 function Skeleton({ className = "" }) {
   return <div className={`shimmer rounded-lg ${className}`} />;
 }
 
-function SectionHeading({ children }) {
-  return <h2 className="mb-4 text-sm font-semibold tracking-widest uppercase">{children}</h2>;
-}
-
 function SearchPage() {
-  const { q: query } = Route.useSearch();
-  const [loading, setLoading] = useState(true);
-  const [results, setResults] = useState([]);
-  const [activeTab, setActiveTab] = useState("AI");
+  const { q: query, mode } = Route.useSearch();
+  const navigate = useNavigate();
 
- useEffect(() => {
-  async function loadSearch() {
-    setLoading(true);
+  const requestId = useRef(0);
+
+  const [response, setResponse] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [showJourney, setShowJourney] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+
+  const results = Array.isArray(response?.searchResult)
+    ? response.searchResult
+    : [];
+
+  const metadata = response?.searchExecutionMetadata;
+  const activeMode = modes.find((item) => item.id === mode) ?? modes[0];
+
+  useEffect(() => {
+    const currentRequestId = ++requestId.current;
+    const trimmedQuery = query.trim();
+
+    setFeedback("");
+
+    if (!trimmedQuery) {
+      setResponse(null);
+      setError("");
+      setLoading(false);
+
+      return () => {
+        requestId.current++;
+      };
+    }
+
+    let cancelled = false;
+
+    async function loadSearch() {
+      setLoading(true);
+      setError("");
+      setResponse(null);
+
+      try {
+        const data = await search(trimmedQuery, mode);
+
+        if (!cancelled && requestId.current === currentRequestId) {
+          setResponse(data);
+        }
+      } catch (err) {
+        if (!cancelled && requestId.current === currentRequestId) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Something went wrong. Please try again.",
+          );
+        }
+      } finally {
+        if (!cancelled && requestId.current === currentRequestId) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadSearch();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [query, mode, retryCount]);
+
+  function changeMode(nextMode) {
+    if (!modes.some((item) => item.id === nextMode)) return;
+
+    setShowJourney(false);
+
+    navigate({
+      to: "/search",
+      search: { q: query, mode: nextMode },
+    });
+  }
+
+  async function copyResults() {
+    const text = [
+      `QUIXO search: ${query}`,
+      `Mode: ${activeMode.label}`,
+      "",
+      ...results.map(
+        (item, index) =>
+          `${index + 1}. ${item.title || "Untitled result"}\n${item.link || ""}\n${item.snippet || ""}`,
+      ),
+    ].join("\n\n");
 
     try {
-      const data = await search(query);
-      setResults(data);
-    } catch (error) {
-      console.error("Search failed:", error);
-    } finally {
-      setLoading(false);
+      await copyToClipboard(text);
+      setFeedback("Results copied to clipboard.");
+    } catch {
+      setFeedback("Unable to copy results. Check browser permissions.");
     }
   }
 
-  loadSearch();
-}, [query]);
+  async function shareSearch() {
+    const url = window.location.href;
+
+    try {
+      if (typeof navigator.share === "function") {
+        await navigator.share({
+          title: `QUIXO — ${query}`,
+          text: `Explore these ${activeMode.label.toLowerCase()} results.`,
+          url,
+        });
+
+        setFeedback("Share menu opened.");
+      } else {
+        await copyToClipboard(url);
+        setFeedback("Search link copied to clipboard.");
+      }
+    } catch (err) {
+      if (err?.name !== "AbortError") {
+        setFeedback("Unable to share this search.");
+      }
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 border-b border-border/70 bg-background/75 backdrop-blur-xl">
-        <div className="mx-auto max-w-6xl px-5 py-3">
-          <div className="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 sm:gap-5"><Logo compact /><SearchBar initialValue={query} compact /></div>
-          <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1">
-            {categories.map((category) => <button key={category} onClick={() => setActiveTab(category)} className="shrink-0 rounded-full px-3.5 py-1.5 text-sm transition-colors duration-300" style={{ backgroundColor: activeTab === category ? "color-mix(in oklab, var(--primary) 16%, transparent)" : "transparent", color: activeTab === category ? "var(--accent-glow)" : "var(--muted-foreground)" }}>{category}</button>)}
+    <div className="min-h-screen overflow-x-clip bg-[#08070b] text-zinc-100">
+      <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#08070b]/90 backdrop-blur-2xl">
+        <div className="mx-auto max-w-[1440px] px-4 py-3 sm:px-6 lg:px-10">
+          <div className="flex items-center gap-3 sm:gap-6">
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/" })}
+              aria-label="Back to home"
+              title="Back to home"
+              className="grid size-10 shrink-0 place-items-center rounded-xl border border-white/[0.09] bg-white/[0.02] text-zinc-400 transition hover:border-violet-400/40 hover:bg-violet-400/[0.07] hover:text-white"
+            >
+              <ArrowLeft size={17} />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => navigate({ to: "/" })}
+              aria-label="Go to QUIXO homepage"
+              className="flex shrink-0 items-center"
+            >
+              <img
+                src={quixoLogo}
+                alt="QUIXO"
+                className="block h-10 w-auto max-w-[160px] object-contain"
+              />
+            </button>
+
+            <div className="min-w-0 flex-1">
+              <SearchBar
+                initialValue={query}
+                initialMode={mode}
+                compact
+              />
+            </div>
           </div>
+
+          <nav
+            aria-label="Search modes"
+            className="mt-4 flex gap-2 overflow-x-auto pb-1"
+          >
+            {modes.map(({ id, label, icon: Icon }) => {
+              const active = mode === id;
+
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => changeMode(id)}
+                  aria-pressed={active}
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-xl border px-3.5 py-2 text-sm transition-all duration-200 ${
+                    active
+                      ? "border-violet-400/35 bg-violet-400/[0.09] text-violet-200 shadow-[inset_0_0_18px_rgba(139,92,246,0.035)]"
+                      : "border-white/[0.07] bg-white/[0.015] text-zinc-400 hover:border-violet-400/25 hover:text-zinc-100"
+                  }`}
+                >
+                  <Icon size={15} />
+                  {label}
+                  {active && (
+                    <span className="ml-0.5 size-1.5 rounded-full bg-violet-300" />
+                  )}
+                </button>
+              );
+            })}
+          </nav>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-6xl gap-8 px-5 py-8 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <main className="mx-auto grid max-w-[1440px] gap-8 px-4 py-7 sm:px-6 lg:grid-cols-[minmax(0,1fr)_280px] lg:px-10 lg:py-10">
         <div className="min-w-0 space-y-8">
-          <AnswerCard query={query} loading={loading} />
-          <WebResults
-    loading={loading}
-    results={results}
-/>
-          <ImageResults loading={loading} />
+          <motion.section
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease }}
+            className="relative isolate overflow-hidden rounded-2xl border border-white/[0.08] bg-[#0c0a10] p-5 sm:p-7"
+          >
+            <div className="pointer-events-none absolute -right-20 -top-28 -z-10 size-72 rounded-full bg-violet-700/[0.10] blur-[100px]" />
+            <div className="pointer-events-none absolute -bottom-28 left-1/3 -z-10 size-52 rounded-full bg-indigo-900/[0.08] blur-[90px]" />
+
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-violet-300">
+              <Sparkles size={14} />
+              <span>Search workspace</span>
+              <span className="text-zinc-700">/</span>
+              <span>{activeMode.label}</span>
+            </div>
+
+            <h1 className="mt-5 break-words text-2xl font-semibold tracking-tight text-zinc-50 sm:text-4xl">
+              {query || "What do you want to discover?"}
+            </h1>
+
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400">
+              {response?.description || activeMode.description}
+            </p>
+
+            {metadata && !loading && (
+              <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-zinc-500">
+                <span className="inline-flex items-center gap-1.5">
+                  <Globe2 size={13} />
+                  {metadata.engine || "Web search"}
+                </span>
+
+                <span className="inline-flex items-center gap-1.5">
+                  <SearchIcon size={13} />
+                  {metadata.resultCount ?? results.length} results
+                </span>
+
+                {metadata.executedAt && (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock3 size={13} />
+                    {formatDate(metadata.executedAt)}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {query && (
+              <div className="mt-6 flex flex-wrap gap-2 border-t border-white/[0.07] pt-4">
+                <button
+                  type="button"
+                  onClick={copyResults}
+                  disabled={loading || results.length === 0}
+                  title="Copy search results"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs text-zinc-400 transition hover:border-violet-400/30 hover:text-violet-200 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Copy size={14} />
+                  Copy results
+                </button>
+
+                <button
+                  type="button"
+                  onClick={shareSearch}
+                  title="Share this search"
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs text-zinc-400 transition hover:border-violet-400/30 hover:text-violet-200"
+                >
+                  <Share2 size={14} />
+                  Share search
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowJourney((value) => !value)}
+                  aria-expanded={showJourney}
+                  className="inline-flex items-center gap-2 rounded-lg border border-white/[0.08] bg-white/[0.02] px-3 py-2 text-xs text-zinc-400 transition hover:border-violet-400/30 hover:text-violet-200"
+                >
+                  <ArrowUpRight size={14} />
+                  Search journey
+                </button>
+              </div>
+            )}
+
+            {feedback && (
+              <p
+                role="status"
+                aria-live="polite"
+                className="mt-3 text-xs text-violet-300"
+              >
+                {feedback}
+              </p>
+            )}
+          </motion.section>
+
+          {showJourney && (
+            <motion.section
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="rounded-2xl border border-white/[0.08] bg-[#0b090f] p-4 sm:p-5"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-lg font-semibold">
+                    Investigation thread
+                  </h2>
+                  <p className="mt-1 text-sm text-zinc-400">
+                    Use this query as the starting point for your next
+                    exploration.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowJourney(false)}
+                  title="Close journey panel"
+                  aria-label="Close journey panel"
+                  className="rounded-lg p-1.5 text-zinc-400 transition hover:bg-white/[0.05] hover:text-white"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="mt-4 inline-flex max-w-full items-center gap-2 rounded-xl border border-violet-400/20 bg-violet-400/[0.05] px-3 py-2 text-sm text-violet-200">
+                <SearchIcon size={14} />
+                <span className="break-all">{query}</span>
+              </div>
+
+              <p className="mt-3 text-xs leading-5 text-zinc-500">
+                Related searches and saved search history are not connected
+                yet. This panel currently shows your active investigation.
+              </p>
+            </motion.section>
+          )}
+
+          <section>
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300/80">
+                  The web, organized
+                </p>
+                <h2 className="mt-1 text-lg font-semibold sm:text-xl">
+                  {activeMode.resultsLabel}
+                </h2>
+              </div>
+
+              {!loading && results.length > 0 && (
+                <span className="rounded-lg border border-white/[0.07] px-2.5 py-1.5 text-xs text-zinc-400">
+                  {results.length} found
+                </span>
+              )}
+            </div>
+
+            {loading ? (
+              <div
+                className="space-y-3"
+                aria-label="Loading search results"
+                aria-busy="true"
+              >
+                {Array.from({ length: 5 }, (_, index) => (
+                  <div
+                    key={index}
+                    className="rounded-2xl border border-white/[0.06] bg-[#0b090f] p-5"
+                  >
+                    <Skeleton className="h-3 w-1/3" />
+                    <Skeleton className="mt-4 h-5 w-3/4" />
+                    <Skeleton className="mt-4 h-3 w-full" />
+                    <Skeleton className="mt-2 h-3 w-5/6" />
+                  </div>
+                ))}
+              </div>
+            ) : error ? (
+              <div
+                role="alert"
+                className="rounded-2xl border border-red-400/20 bg-red-400/[0.035] p-6"
+              >
+                <h3 className="font-semibold text-red-300">
+                  Search couldn&apos;t be completed
+                </h3>
+
+                <p className="mt-2 break-words text-sm leading-6 text-zinc-400">
+                  {error}
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setRetryCount((count) => count + 1)}
+                  className="mt-4 rounded-lg border border-white/[0.09] px-4 py-2 text-sm transition hover:border-violet-400/30 hover:text-violet-200"
+                >
+                  Try again
+                </button>
+              </div>
+            ) : !query.trim() ? (
+              <EmptyState
+                title="Start with a question"
+                description="Enter a query in the search bar to discover real results from the web."
+              />
+            ) : results.length === 0 ? (
+              <EmptyState
+                title="No results found"
+                description="Try another search phrase or switch to a different QUIXO mode."
+              />
+            ) : (
+              <div className="space-y-3">
+                {results.map((result, index) => (
+                  <ResultCard
+                    key={`${result.link || result.title || "result"}-${index}`}
+                    result={result}
+                    index={index}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
         </div>
-        <Sidebar />
+
+        <aside className="min-w-0 space-y-5 lg:sticky lg:top-36 lg:self-start">
+          <section className="rounded-2xl border border-white/[0.08] bg-[#0b090f] p-5">
+            <div className="flex items-center gap-2">
+              <span className="grid size-8 place-items-center rounded-lg border border-violet-400/20 bg-violet-400/[0.06]">
+                <Sparkles size={15} className="text-violet-300" />
+              </span>
+              <h2 className="font-semibold">Search intelligence</h2>
+            </div>
+
+            <p className="mt-3 text-sm leading-6 text-zinc-400">
+              QUIXO retrieves results for your selected mode. Visit the
+              original sources to verify details and explore further.
+            </p>
+
+            <div className="mt-5 space-y-3 border-t border-white/[0.07] pt-4">
+              <InfoRow label="Mode" value={activeMode.label} />
+              <InfoRow
+                label="Status"
+                value={
+                  loading
+                    ? "Searching"
+                    : error
+                      ? "Failed"
+                      : response
+                        ? "Complete"
+                        : "Ready"
+                }
+              />
+              <InfoRow
+                label="Results"
+                value={loading ? "…" : String(results.length)}
+              />
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-white/[0.08] bg-[#0b090f] p-5">
+            <div className="flex items-center gap-2">
+              <Newspaper size={16} className="text-violet-300" />
+              <h2 className="font-semibold">Explore modes</h2>
+            </div>
+
+            <div className="mt-4 space-y-1">
+              {modes.map(({ id, label, description, icon: Icon }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => changeMode(id)}
+                  aria-pressed={mode === id}
+                  title={description}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition ${
+                    mode === id
+                      ? "bg-violet-400/[0.08] text-violet-200"
+                      : "text-zinc-400 hover:bg-white/[0.035] hover:text-zinc-100"
+                  }`}
+                >
+                  <Icon size={16} />
+                  <span className="flex-1">{label}</span>
+                  {mode === id && <Check size={14} />}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-violet-400/[0.12] bg-gradient-to-br from-violet-500/[0.055] to-transparent p-5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-violet-300">
+              A different perspective
+            </p>
+
+            <p className="mt-3 text-lg font-medium leading-snug">
+              One question. Different ways to explore.
+            </p>
+
+            <p className="mt-2 text-sm leading-6 text-zinc-400">
+              Switch modes to approach your search from a different angle.
+            </p>
+          </section>
+        </aside>
       </main>
+
       <Footer />
     </div>
   );
 }
 
-function AnswerCard({ query, loading }) {
+function ResultCard({ result, index }) {
+  const title = result.title || "Untitled result";
+  const link = safeUrl(result.link);
+  const image = safeUrl(result.image);
+  const snippet =
+    result.snippet || "No description was provided for this result.";
+  const source = result.source || getHostname(link);
+  const sourceType = result.sourceType || "WEB";
+
   return (
-    <section className="surface-card relative overflow-hidden p-5 sm:p-6">
-      <div className="halo pointer-events-none absolute inset-x-0 -top-24 h-48 opacity-60" />
-      <div className="relative">
-        <div className="flex items-center gap-2 text-xs font-medium tracking-widest text-primary uppercase"><Sparkles className="size-3.5" />Quixo answer</div>
-        <h1 className="mt-3 text-xl leading-snug font-semibold sm:text-2xl">{query}</h1>
-        {loading ? <div className="mt-5 space-y-3"><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-11/12" /><Skeleton className="h-4 w-9/12" /><Skeleton className="h-4 w-10/12" /></div> : <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease }} className="mt-4 space-y-3 text-[15px] leading-relaxed text-foreground/85"><p>An answer engine first retrieves a small set of highly relevant passages, then asks a language model to compose a response grounded strictly in those passages. The links you see are evidence for each claim rather than destinations to sift through.</p><p>Quality comes from the retrieval stage: hybrid lexical and dense search catches both exact terms and intent, reranking trims noise, and citations keep the model honest.</p></motion.div>}
-        <SourceList loading={loading} />
-        <div className="mt-5 flex gap-2 border-t border-border pt-4 text-xs text-muted-foreground"><button className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:text-primary"><Copy className="size-3.5" />Copy</button><button className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 transition-colors hover:text-primary"><Share2 className="size-3.5" />Share</button></div>
+    <motion.article
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        duration: 0.35,
+        delay: Math.min(index * 0.045, 0.25),
+        ease,
+      }}
+      className="group overflow-hidden rounded-2xl border border-white/[0.07] bg-[#0b090f] p-4 transition-colors duration-200 hover:border-violet-400/[0.23] hover:bg-[#0d0a12] sm:p-5"
+    >
+      <div className="flex items-start gap-3">
+        {image && (
+          <img
+            src={image}
+            alt=""
+            loading="lazy"
+            referrerPolicy="no-referrer"
+            className="hidden size-[68px] shrink-0 rounded-xl border border-white/[0.08] bg-white/[0.02] object-cover sm:block"
+            onError={(event) => {
+              event.currentTarget.style.display = "none";
+            }}
+          />
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+            <span className="max-w-full truncate">{source}</span>
+            <span className="text-zinc-700">/</span>
+            <span className="rounded-md border border-violet-400/[0.16] bg-violet-400/[0.04] px-2 py-0.5 text-[10px] uppercase tracking-wider text-violet-300">
+              {sourceType}
+            </span>
+
+            {result.date && (
+              <span className="inline-flex items-center gap-1">
+                <Clock3 size={11} />
+                {result.date}
+              </span>
+            )}
+          </div>
+
+          {link ? (
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-2 inline-flex max-w-full items-start gap-2 text-base font-semibold leading-snug text-zinc-100 transition-colors hover:text-violet-200"
+            >
+              <span className="break-words">{title}</span>
+              <ExternalLink
+                size={14}
+                className="mt-1 shrink-0 text-zinc-500 transition-colors group-hover:text-violet-300"
+              />
+            </a>
+          ) : (
+            <h3 className="mt-2 break-words text-base font-semibold text-zinc-100 sm:text-lg">
+              {title}
+            </h3>
+          )}
+
+          <p className="mt-2 break-words text-sm leading-6 text-zinc-400">
+            {snippet}
+          </p>
+
+          {link && (
+            <p className="mt-3 truncate text-xs text-violet-300/60">
+              {link}
+            </p>
+          )}
+        </div>
       </div>
-    </section>
+    </motion.article>
   );
 }
 
-function SourceList({ loading }) {
-  if (loading) return <div className="mt-6 flex flex-wrap gap-2">{Array.from({ length: 4 }, (_, index) => <Skeleton key={index} className="h-9 w-40 rounded-xl" />)}</div>;
-  return <div className="mt-6 flex flex-wrap gap-2">{sources.map((source, index) => <motion.a key={source.name} href="#" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, delay: 0.08 * index, ease }} whileHover={{ y: -2 }} className="flex max-w-[240px] items-center gap-2 rounded-xl border border-border bg-surface px-2.5 py-2 transition-colors duration-300 hover:border-primary/50"><Favicon letter={source.letter} /><span className="min-w-0"><span className="block truncate text-xs font-medium">{source.title}</span><span className="block truncate text-[11px] text-muted-foreground">{source.name}</span></span></motion.a>)}</div>;
+function EmptyState({ title, description }) {
+  return (
+    <div className="flex flex-col items-center rounded-2xl border border-white/[0.07] bg-[#0b090f] px-5 py-14 text-center">
+      <div className="grid size-12 place-items-center rounded-2xl border border-violet-400/20 bg-violet-400/[0.06] text-violet-300">
+        <SearchIcon size={21} />
+      </div>
+
+      <h3 className="mt-4 text-lg font-semibold">{title}</h3>
+
+      <p className="mt-2 max-w-sm text-sm leading-6 text-zinc-400">
+        {description}
+      </p>
+    </div>
+  );
 }
 
-function WebResults({ loading, results }){
-  return <section><SectionHeading>Web results</SectionHeading>
-  <div className="space-y-3">{loading ? Array.from({ length: 3 }, (_, index) => <div key={index} className="surface-card space-y-3 p-4"><Skeleton className="h-4 w-2/3" /><Skeleton className="h-3 w-full" /><Skeleton className="h-3 w-4/5" /></div>) : results.map((result, index) => (
-  <motion.a
-    key={result.title}
-    href={result.url}
-    initial={{ opacity: 0, y: 14 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.45, delay: index * 0.06, ease }}
-    whileHover={{ y: -3 }}
-    className="surface-card group block p-4 hover:border-primary/45"
-  >
-    <div className="flex min-w-0 items-center gap-2.5">
-      <Favicon letter={result.title.charAt(0)} />
-      <span className="truncate text-xs text-muted-foreground">
-        {result.url}
+function InfoRow({ label, value }) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-zinc-500">{label}</span>
+      <span className="max-w-[60%] truncate text-right font-medium text-zinc-200">
+        {value}
       </span>
     </div>
-
-    <h3 className="mt-2.5 text-[17px] font-medium transition-colors duration-300 group-hover:text-primary">
-      {result.title}
-    </h3>
-
-    <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-      {result.description}
-    </p>
-  </motion.a>
-))}</div></section>;
+  );
 }
 
-function ImageResults({ loading }) {
-  return <section><SectionHeading>Images</SectionHeading><div className="grid grid-cols-2 gap-3 sm:grid-cols-3">{loading ? Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="aspect-4/3 rounded-2xl" />) : imageResults.map((image, index) => <motion.a key={image.label} href="#" initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.45, delay: index * 0.05, ease }} whileHover={{ y: -4 }} className="surface-card group relative aspect-4/3 overflow-hidden hover:border-primary/45"><span className="absolute inset-0 transition-transform duration-500 group-hover:scale-105" style={{ backgroundImage: `radial-gradient(120% 90% at 20% 0%, oklch(0.5 0.19 ${image.hue}) 0%, oklch(0.2 0.03 ${image.hue}) 55%, oklch(0.16 0 0) 100%)` }} /><span className="absolute inset-x-0 bottom-0 bg-linear-to-t from-background/95 to-transparent p-3"><span className="block truncate text-xs font-medium">{image.label}</span><span className="block truncate text-[11px] text-muted-foreground">{image.from}</span></span></motion.a>)}</div></section>;
+async function copyToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = text;
+  textArea.style.position = "fixed";
+  textArea.style.opacity = "0";
+
+  document.body.appendChild(textArea);
+  textArea.select();
+
+  const copied = document.execCommand("copy");
+  textArea.remove();
+
+  if (!copied) {
+    throw new Error("Clipboard access is unavailable.");
+  }
 }
 
-function Sidebar() {
-  return <aside className="min-w-0 space-y-6 lg:sticky lg:top-40 lg:self-start"><SidebarCard icon={HelpCircle} title="Related">{relatedQuestions.map((question) => <button key={question} className="group grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-2 py-2.5 text-left text-sm transition-colors duration-200 hover:bg-surface"><span className="min-w-0">{question}</span><ArrowUpRight className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" /></button>)}</SidebarCard><SidebarCard icon={TrendingUp} title="Trending">{trending.slice(0, 5).map((item) => <button key={item.q} className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-xl px-2 py-2.5 text-left transition-colors duration-200 hover:bg-surface"><span className="min-w-0 truncate text-sm">{item.q}</span><span className="shrink-0 text-[11px] text-primary">{item.delta}</span></button>)}</SidebarCard></aside>;
+function formatDate(value) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return String(value);
+  }
+
+  return date.toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
 }
 
-function SidebarCard({ icon: Icon, title, children }) {
-  return <div className="surface-card p-4"><div className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-widest uppercase"><Icon className="size-3.5 text-primary" />{title}</div><div className="space-y-1">{children}</div></div>;
+function safeUrl(value) {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+
+    return ["http:", "https:"].includes(url.protocol) ? url.href : null;
+  } catch {
+    return null;
+  }
 }
+
+function getHostname(value) {
+  if (!value) return "Search result";
+
+  try {
+    return new URL(value).hostname.replace(/^www\./, "");
+  } catch {
+    return "Search result";
+  }
+}
+

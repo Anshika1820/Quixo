@@ -21,7 +21,7 @@ public class UserController {
 	 
 	@PostMapping
 	@ResponseStatus(HttpStatus.CREATED)
-	public User  createUser(@RequestParam String name, @RequestParam String email) {
+	public User createUser(@RequestParam String name, @RequestParam String email) {
 		return userService.createUser(name, email);
 	}
 	

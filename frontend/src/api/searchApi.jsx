@@ -1,12 +1,39 @@
+const BASE_URL = "/api/v1";
 
-const BASE_URL = "http://localhost:8080/api/v1";
+export async function search(query, mode = "EXPLORE") {
+  const trimmedQuery = query?.trim();
 
-export async function search(query) {
-    const response = await fetch(`${BASE_URL}/search?q=${query}`);
+  if (!trimmedQuery) {
+    throw new Error("Please enter a search query.");
+  }
 
-    if (!response.ok) {
-        throw new Error("Failed to fetch search results");
+  const params = new URLSearchParams({
+    q: trimmedQuery,
+    mode,
+  });
+
+  let response;
+
+  try {
+    response = await fetch(`${BASE_URL}/search?${params.toString()}`);
+  } catch {
+    throw new Error(
+      "Unable to connect to Quixo. Please check that the backend is running."
+    );
+  }
+
+  if (!response.ok) {
+    let message = "Search failed. Please try again.";
+
+    try {
+      const errorData = await response.json();
+      message = errorData.message || errorData.error || message;
+    } catch {
+      // Keep the default message if the response isn't JSON.
     }
 
-    return response.json();
+    throw new Error(message);
+  }
+
+  return response.json();
 }
